@@ -6,19 +6,22 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>602</width>
-    <height>401</height>
+    <width>1789</width>
+    <height>864</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="pushButton">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <widget class="QPushButton" name="startButton">
     <property name="geometry">
      <rect>
-      <x>40</x>
-      <y>190</y>
+      <x>10</x>
+      <y>780</y>
       <width>91</width>
       <height>41</height>
      </rect>
@@ -35,8 +38,8 @@
    <widget class="QLabel" name="EmotionLabel">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>30</y>
+      <x>10</x>
+      <y>20</y>
       <width>61</width>
       <height>21</height>
      </rect>
@@ -50,45 +53,118 @@
      <string>Эмоция:</string>
     </property>
    </widget>
+   <widget class="QGraphicsView" name="graphic1">
+    <property name="geometry">
+     <rect>
+      <x>1170</x>
+      <y>40</y>
+      <width>611</width>
+      <height>361</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QGraphicsView" name="graphic2">
+    <property name="geometry">
+     <rect>
+      <x>1170</x>
+      <y>460</y>
+      <width>611</width>
+      <height>361</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="graphLabel1">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>1170</x>
+      <y>10</y>
+      <width>121</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Окраска эмоции</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="graphLabel2">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>1170</x>
+      <y>430</y>
+      <width>121</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Сила эмоции</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>602</width>
+     <width>1789</width>
      <height>21</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu">
+   <widget class="QMenu" name="openPrevSession">
     <property name="title">
-     <string>Открыть видео</string>
+     <string>Загрузить предыдущую сессию работы</string>
     </property>
    </widget>
-   <widget class="QMenu" name="menu_2">
-    <property name="title">
-     <string>Выбрать порт</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menu_3">
-    <property name="title">
-     <string>Загрузить предыдущую версию</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menu_4">
+   <widget class="QMenu" name="settings">
     <property name="title">
      <string>Настройки</string>
     </property>
+    <addaction name="setUser"/>
+    <addaction name="setEmotions"/>
+    <addaction name="chooseVideo"/>
+    <addaction name="choosePort"/>
    </widget>
-   <addaction name="menu"/>
-   <addaction name="menu_2"/>
-   <addaction name="menu_3"/>
-   <addaction name="menu_4"/>
+   <addaction name="settings"/>
+   <addaction name="openPrevSession"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="action">
    <property name="text">
     <string>Загрузить предыдущую сессию</string>
+   </property>
+  </action>
+  <action name="choosePort">
+   <property name="text">
+    <string>Выбрать порт</string>
+   </property>
+  </action>
+  <action name="setEmotions">
+   <property name="text">
+    <string>Настроить определяемые эмоции</string>
+   </property>
+  </action>
+  <action name="chooseVideo">
+   <property name="text">
+    <string>Выбрать видеофайл</string>
+   </property>
+  </action>
+  <action name="setUser">
+   <property name="text">
+    <string>Настроить данные пользователя</string>
    </property>
   </action>
  </widget>
