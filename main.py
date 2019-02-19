@@ -2,6 +2,11 @@ import random
 import sys  # sys нужен для передачи argv в QApplication
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+from PyQt5.QtCore import QDir, QUrl
+from PyQt5.QtGui import QIcon
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtWidgets import QFileDialog, QAction
+
 import design  # Это наш конвертированный файл дизайна
 import pyqtgraph as pg
 import numpy as np
@@ -40,9 +45,16 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.data2 = []
         self.timings = []
 
-        # запускает таймер, который работает заданное количество секунд
+        # для кнопки
         self.clicked = False
 
+        # настройка видео
+        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.mediaPlayer.setVideoOutput(self.videoWidget)
+        self.chooseVideo.triggered.connect(self.openFile)
+
+
+    # запускает таймер, который работает заданное количество секунд
     def start_timer(self, seconds=10, interval=10):
 
         if self.clicked:
@@ -50,6 +62,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.timer.stop()
             self.timer.deleteLater()
 
+            self.mediaPlayer.stop()
             self.clicked = False
 
             # reset data for graphs
@@ -77,6 +90,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             self.timer.timeout.connect(handler)
             self.timer.start(interval)
+
+            self.mediaPlayer.play()
             self.clicked = True
 
     # то что происходит каждый тик таймера
@@ -132,6 +147,15 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.curve2.setData(y=self.data2)
         # скорость прокрутки - выводится последние 10 секунд
         self.plot2.setXRange(counter - 10000 / interval, counter - 10)
+
+
+    def openFile(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
+                QDir.homePath())
+
+        if fileName != '':
+            self.mediaPlayer.setMedia(
+                    QMediaContent(QUrl.fromLocalFile(fileName)))
 
 def main():
     #import pyqtgraph.examples

@@ -22,7 +22,7 @@
      <rect>
       <x>10</x>
       <y>780</y>
-      <width>91</width>
+      <width>231</width>
       <height>41</height>
      </rect>
     </property>
@@ -115,6 +115,16 @@
      <string>Сила эмоции</string>
     </property>
    </widget>
+   <widget class="QVideoWidget" name="videoWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>50</y>
+      <width>1121</width>
+      <height>711</height>
+     </rect>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -173,6 +183,12 @@
    <class>GraphicsLayoutWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>QVideoWidget</class>
+   <extends>QWidget</extends>
+   <header>PyQt5.QtMultimediaWidgets</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

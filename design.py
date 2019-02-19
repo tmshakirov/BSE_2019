@@ -17,7 +17,7 @@ class Ui_MainWindow(object):
         self.centralwidget.setEnabled(True)
         self.centralwidget.setObjectName("centralwidget")
         self.startButton = QtWidgets.QPushButton(self.centralwidget)
-        self.startButton.setGeometry(QtCore.QRect(10, 780, 91, 41))
+        self.startButton.setGeometry(QtCore.QRect(10, 780, 231, 41))
         font = QtGui.QFont()
         font.setPointSize(14)
         self.startButton.setFont(font)
@@ -48,6 +48,9 @@ class Ui_MainWindow(object):
         font.setPointSize(12)
         self.graphLabel2.setFont(font)
         self.graphLabel2.setObjectName("graphLabel2")
+        self.videoWidget = QVideoWidget(self.centralwidget)
+        self.videoWidget.setGeometry(QtCore.QRect(10, 50, 1121, 711))
+        self.videoWidget.setObjectName("videoWidget")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1789, 21))
@@ -93,4 +96,5 @@ class Ui_MainWindow(object):
         self.setUser.setText(_translate("MainWindow", "Настроить данные пользователя"))
 
 
+from PyQt5.QtMultimediaWidgets import QVideoWidget
 from pyqtgraph import GraphicsLayoutWidget
