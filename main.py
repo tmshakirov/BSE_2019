@@ -14,7 +14,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
-        self.startButton.clicked.connect(lambda: self.start_timer(10, 10))
+        self.startButton.clicked.connect(lambda: self.start_timer(10, 100))
 
         self.timer = QtCore.QTimer()
         self.time = QtCore.QTime(0, 0, 0)
@@ -34,15 +34,11 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot2 = self.graphic2.addPlot()
         self.curve2 = self.plot2.plot()
         self.setGraphs()
-        self.prev1 = 0
 
         # задаем массивы для хранения данных
         self.data1 = []
-        self.data2 = np.empty(100)
-        self.ptr1 = 0
-        self.ptr2 = 0
-        self.timings = [] #np.empty(100, dtype=str)
-        self.t = QtCore.QTime()
+        self.data2 = []
+        self.timings = []
 
         # запускает таймер, который работает заданное количество секунд
         self.clicked = False
@@ -57,10 +53,12 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.clicked = False
 
             # reset data for graphs
-            self.data1 = np.empty(100)
-            self.data2 = np.empty(100)
-            self.ptr1 = 0
-            self.ptr2 = 0
+            self.data1 = []
+            self.data2 = []
+            self.timings = []
+
+            self.plot1.getAxis('bottom').setTicks([])
+            self.plot2.getAxis('bottom').setTicks([])
         else:
             self.startButton.setText("Остановить")
             counter = 0
@@ -68,7 +66,6 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             self.time = QtCore.QTime(0, 0, 0)
             self.timer = QtCore.QTimer()
-            self.t.start()
 
             def handler():
                 nonlocal counter
@@ -95,7 +92,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.timings.append(self.time.toString('mm:ss.zzz'))
 
         self.EmotionLabel.setText(self.time.toString('mm:ss.zzz'))
-        self.updateGraphs(x, y, interval)
+        self.updateGraphs(x, y, interval, counter)
 
     def setGraphs(self):
         # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
@@ -111,36 +108,30 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot2.setLimits(xMin=0)
 
 
-    def updateGraphs(self, x, y, interval):
+    def updateGraphs(self, x, y, interval, counter):
         # increase first graph
         self.data1.append(x)
-        self.ptr1 += 1
 
         xdict = dict(enumerate(self.timings))
-
         xax = self.plot1.getAxis('bottom')
         xax.setTicks([xdict.items()])
 
         self.curve1.setData(y=self.data1)
 
         # скорость прокрутки - выводится последние 10 секунд
-        self.plot1.setXRange(self.ptr1 - 10000/interval, self.ptr1 - 10)
+        self.plot1.setXRange(counter - 10000/interval, counter - 10)
 
 
         # increase second graph
-        self.data2[self.ptr2] = y
-        self.ptr2 += 1
-        # increase arr of data2
-        if self.ptr2 >= self.data2.shape[0]:
-            tmp = self.data2
-            self.data2 = np.empty(self.data2.shape[0] * 2)
-            self.data2[:tmp.shape[0]] = tmp
+        self.data2.append(y)
 
-        self.curve2.setData(self.data2[:self.ptr2])
-        #self.curve2.setPos(-self.ptr2, 0)
+        xdict = dict(enumerate(self.timings))
+        xax1 = self.plot2.getAxis('bottom')
+        xax1.setTicks([xdict.items()])
 
-        self.plot2.setXRange(self.ptr2 - 10000/interval, self.ptr2)
-
+        self.curve2.setData(y=self.data2)
+        # скорость прокрутки - выводится последние 10 секунд
+        self.plot2.setXRange(counter - 10000 / interval, counter - 10)
 
 def main():
     #import pyqtgraph.examples
