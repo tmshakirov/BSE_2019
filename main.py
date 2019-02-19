@@ -16,31 +16,44 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.startButton.clicked.connect(lambda: self.start_timer(10, 10))
 
-        # настраиваем график
+        # настраиваем графики
         self.timer = QtCore.QTimer()
-        self.win = pg.GraphicsWindow()
-        self.p3 = self.win.addPlot()
-        self.curve3 = self.p3.plot()
-        self.setGraph()
 
-        self.data3 = np.empty(100)
-        self.ptr3 = 0
+        self.plot1 = self.graphic1.addPlot()
+        self.curve1 = self.plot1.plot()
+
+        self.plot2 = self.graphic2.addPlot()
+        self.curve2 = self.plot2.plot()
+        self.setGraphs()
+
+        # задаем массивы для хранения данных
+        self.data1 = np.empty(100)
+        self.data2 = np.empty(100)
+        self.ptr1 = 0
+        self.ptr2 = 0
 
         # запускает таймер, который работает заданное количество секунд
         self.clicked = False
+
     def start_timer(self, seconds=10, interval=10):
 
         if(self.clicked):
             self.startButton.setText("Запустить")
             self.timer.stop()
             self.clicked = False
+
+            # reset data for graphs
+            self.data1 = np.empty(100)
+            self.data2 = np.empty(100)
+            self.ptr1 = 0
+            self.ptr2 = 0
         else:
             self.startButton.setText("Остановить")
             counter = 0
             count = seconds * 1000 / interval
 
-            self.data3 = np.empty(100)
-            self.ptr3 = 0
+            self.data1 = np.empty(100)
+            self.ptr1 = 0
 
             def handler():
                 nonlocal counter
@@ -58,31 +71,49 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def update(self, counter):
         #заглушка для считываемого потока
         x = random.randint(0, 100)
+        y = random.randint(0, 100)
 
 
         self.EmotionLabel.setText(str(counter))
-        self.updateGraph(x)
+        self.updateGraphs(x, y)
 
-    def setGraph(self):
-        self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
+    def setGraphs(self):
+        # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
         # Use automatic downsampling and clipping to reduce the drawing load
-        self.p3.setDownsampling(mode='peak')
-        self.p3.setClipToView(True)
-        self.p3.setRange(xRange=[-100, 0])
-        self.p3.setLimits(xMax=0)
+        self.plot1.setDownsampling(mode='peak')
+        self.plot1.setClipToView(True)
+        self.plot1.setRange(xRange=[-100, 0])
+        self.plot1.setLimits(xMax=0)
 
+        self.plot2.setDownsampling(mode='peak')
+        self.plot2.setClipToView(True)
+        self.plot2.setRange(xRange=[-100, 0])
+        self.plot2.setLimits(xMax=0)
 
-    def updateGraph(self, x):
-        self.data3[self.ptr3] = x
-        self.ptr3 += 1
-        # increase arr of data
-        if self.ptr3 >= self.data3.shape[0]:
-            tmp = self.data3
-            self.data3 = np.empty(self.data3.shape[0] * 2)
-            self.data3[:tmp.shape[0]] = tmp
+    def updateGraphs(self, x, y):
+        # increase first graph
+        self.data1[self.ptr1] = x
+        self.ptr1 += 1
+        # increase arr of data1
+        if self.ptr1 >= self.data1.shape[0]:
+            tmp = self.data1
+            self.data1 = np.empty(self.data1.shape[0] * 2)
+            self.data1[:tmp.shape[0]] = tmp
 
-        self.curve3.setData(self.data3[:self.ptr3])
-        self.curve3.setPos(-self.ptr3, 0)
+        self.curve1.setData(self.data1[:self.ptr1])
+        self.curve1.setPos(-self.ptr1, 0)
+
+        # increase second graph
+        self.data2[self.ptr2] = y
+        self.ptr2 += 1
+        # increase arr of data2
+        if self.ptr2 >= self.data2.shape[0]:
+            tmp = self.data2
+            self.data2 = np.empty(self.data2.shape[0] * 2)
+            self.data2[:tmp.shape[0]] = tmp
+
+        self.curve2.setData(self.data2[:self.ptr2])
+        self.curve2.setPos(-self.ptr2, 0)
 
 
 

@@ -53,7 +53,7 @@
      <string>Эмоция:</string>
     </property>
    </widget>
-   <widget class="QGraphicsView" name="graphic1">
+   <widget class="GraphicsLayoutWidget" name="graphic1">
     <property name="geometry">
      <rect>
       <x>1170</x>
@@ -63,7 +63,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QGraphicsView" name="graphic2">
+   <widget class="GraphicsLayoutWidget" name="graphic2">
     <property name="geometry">
      <rect>
       <x>1170</x>
@@ -168,6 +168,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>GraphicsLayoutWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

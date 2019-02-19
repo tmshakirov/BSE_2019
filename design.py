@@ -28,10 +28,10 @@ class Ui_MainWindow(object):
         font.setPointSize(12)
         self.EmotionLabel.setFont(font)
         self.EmotionLabel.setObjectName("EmotionLabel")
-        self.graphic1 = QtWidgets.QGraphicsView(self.centralwidget)
+        self.graphic1 = GraphicsLayoutWidget(self.centralwidget)
         self.graphic1.setGeometry(QtCore.QRect(1170, 40, 611, 361))
         self.graphic1.setObjectName("graphic1")
-        self.graphic2 = QtWidgets.QGraphicsView(self.centralwidget)
+        self.graphic2 = GraphicsLayoutWidget(self.centralwidget)
         self.graphic2.setGeometry(QtCore.QRect(1170, 460, 611, 361))
         self.graphic2.setObjectName("graphic2")
         self.graphLabel1 = QtWidgets.QLabel(self.centralwidget)
@@ -93,3 +93,4 @@ class Ui_MainWindow(object):
         self.setUser.setText(_translate("MainWindow", "Настроить данные пользователя"))
 
 
+from pyqtgraph import GraphicsLayoutWidget
