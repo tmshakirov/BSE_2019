@@ -1,5 +1,7 @@
 import random
 import sys  # sys нужен для передачи argv в QApplication
+
+import serial
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5.QtCore import QDir, QUrl
@@ -42,6 +44,10 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.mediaPlayer.setVideoOutput(self.videoWidget)
         self.chooseVideo.triggered.connect(self.openFile)
 
+        # настройка порта
+        self.ser = serial.Serial()
+        self.ser.baudrate = 57600
+
     # запускает таймер, который работает сколько влезет, пауза кнопкой
     def start_timer(self, seconds=10, interval=100):
 
@@ -69,6 +75,11 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.time = QtCore.QTime(0, 0, 0)
             self.timer = QtCore.QTimer()
 
+            #открытие порта
+            self.ser.port = 'COM11'
+            if not self.ser.isOpen():
+                self.ser.open()
+
             # reset data for graphs
             self.data1 = []
             self.data2 = []
@@ -94,16 +105,19 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def update(self, counter, interval):
 
         # заглушка для считываемого потока
-        x = random.randint(0, 100)
-        y = random.randint(0, 100)
+        #x = random.randint(0, 100)
+        #y = random.randint(0, 100)
         ########################
+
+        #считка с устройства
+        ch1, ch2 = self.readFromEEG()
 
         # increase timings
         self.time = self.time.addMSecs(interval)
         self.timings.append(self.time.toString('mm:ss.zzz'))
 
         self.EmotionLabel.setText(self.time.toString('mm:ss.zzz'))
-        self.updateGraphs(x, y, interval, counter)
+        self.updateGraphs(ch1, ch2, interval, counter)
 
     def setGraphs(self):
         # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
@@ -146,6 +160,43 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             if fileName != '':
                 self.mediaPlayer.setMedia(
                         QMediaContent(QUrl.fromLocalFile(fileName)))
+
+    def readFromEEG(self):
+        gotBegin = False
+
+        # seek start
+        while not gotBegin:
+
+            # 1
+            x = self.ser.read()
+            while int.from_bytes(x, byteorder='big') != 165:
+                x = self.ser.read()
+            gotBegin = True
+
+            # 2
+            x = self.ser.read()
+            gotBegin = gotBegin and int.from_bytes(x, byteorder='big') == 90
+
+            # 3
+            x = self.ser.read()
+            gotBegin = gotBegin and int.from_bytes(x, byteorder='big') == 2
+
+        # 4
+        self.ser.read()
+
+        def conv2sig(xb, yb):
+            xi = int.from_bytes(xb, byteorder='big')
+            yi = int.from_bytes(yb, byteorder='big')
+            a = format(xi, 'b') + format(yi, 'b')
+            return int(a, 2)
+
+        # 5 and 6
+        ch1 = conv2sig(self.ser.read(), self.ser.read())
+
+        # 7 and 8
+        ch2 = conv2sig(self.ser.read(), self.ser.read())
+
+        return ch1, ch2
 
 def main():
     #import pyqtgraph.examples
