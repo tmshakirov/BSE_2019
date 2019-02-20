@@ -18,7 +18,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
-        self.startButton.clicked.connect(lambda: self.start_timer(10, 100))
+        self.startButton.clicked.connect(self.start_timer)
 
         self.timer = QtCore.QTimer()
         self.time = QtCore.QTime(0, 0, 0)
@@ -35,6 +35,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.data1 = []
         self.data2 = []
         self.timings = []
+        self.counter = 0
+        self.counter1 = 0
 
         # для кнопки
         self.clicked = False
@@ -49,13 +51,11 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.ser.baudrate = 57600
 
     # запускает таймер, который работает сколько влезет, пауза кнопкой
-    def start_timer(self, seconds=10, interval=100):
-
+    def start_timer(self):
         if self.clicked:
             self.startButton.setText("Запустить")
             self.timer.stop()
             self.timer.deleteLater()
-
             self.mediaPlayer.stop()
             self.clicked = False
 
@@ -66,11 +66,10 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.plot2.getAxis('bottom').setTicks([xdict.items()])
             self.curve2.setData(self.data2)
 
-
         else:
             self.startButton.setText("Остановить")
-            counter = 0
-            #count = seconds * 1000 / interval
+            self.counter = 0
+            self.counter1 = 0
 
             self.time = QtCore.QTime(0, 0, 0)
             self.timer = QtCore.QTimer()
@@ -87,23 +86,16 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.plot1.getAxis('bottom').setTicks([])
             self.plot2.getAxis('bottom').setTicks([])
 
-            def handler():
-                nonlocal counter
-                counter += 1
-                self.update(counter, interval)
-                #if counter >= count:
-                    #self.timer.stop()
-                    #self.timer.deleteLater()
-
-            self.timer.timeout.connect(handler)
-            self.timer.start(interval)
+            self.timer.timeout.connect(self.update)
+            self.timer.start(4)
 
             self.mediaPlayer.play()
             self.clicked = True
 
     # то что происходит каждый тик таймера
-    def update(self, counter, interval):
+    def update(self):
 
+        self.counter += 1
         # заглушка для считываемого потока
         #x = random.randint(0, 100)
         #y = random.randint(0, 100)
@@ -112,12 +104,16 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         #считка с устройства
         ch1, ch2 = self.readFromEEG()
 
+        interval = 100 / 4
         # increase timings
-        self.time = self.time.addMSecs(interval)
-        self.timings.append(self.time.toString('mm:ss.zzz'))
-
-        self.EmotionLabel.setText(self.time.toString('mm:ss.zzz'))
-        self.updateGraphs(ch1, ch2, interval, counter)
+        if self.counter >= interval:
+            interval *= 4
+            self.counter = 0
+            self.counter1 += 1
+            self.time = self.time.addMSecs(interval)
+            self.timings.append(self.time.toString('mm:ss.zzz'))
+            self.EmotionLabel.setText(str(ch1))
+            self.updateGraphs(ch1, ch2)
 
     def setGraphs(self):
         # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
@@ -132,26 +128,27 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot2.setRange(xRange=[0, 100])
         self.plot2.setLimits(xMin=0)
 
-    def updateGraphs(self, x, y, interval, counter):
+    def updateGraphs(self, x, y):
         # increase first graph
         self.data1.append(x)
 
-        # скорость прокрутки - выводятся последние 10 секунд
-        pos = int(counter - 10000/interval)
+        numbp = 200
+        # скорость прокрутки - выводятся последние numbp точек
+        pos = int(self.counter1 - numbp)
         if pos < 0:
             pos = 0
 
-        self.curve1.setData(self.data1[pos:counter])
-        xdict = dict(enumerate(self.timings[pos:counter]))
+        self.curve1.setData(self.data1[pos:self.counter1])
+        xdict = dict(enumerate(self.timings[pos:self.counter1]))
         self.plot1.getAxis('bottom').setTicks([xdict.items()])
-        self.plot1.setXRange(0, 10000/interval)
+        self.plot1.setXRange(0, numbp)
 
         # increase second graph
         self.data2.append(y)
 
-        self.curve2.setData(self.data2[pos:counter])
+        self.curve2.setData(self.data2[pos:self.counter1])
         self.plot2.getAxis('bottom').setTicks([xdict.items()])
-        self.plot2.setXRange(0, 10000 / interval)
+        self.plot2.setXRange(0, numbp)
 
     def openFile(self):
             fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
