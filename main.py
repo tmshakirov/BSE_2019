@@ -6,7 +6,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox
 import design  # Это наш конвертированный файл дизайна
 
 
@@ -45,10 +45,13 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.mediaPlayer.setVideoOutput(self.videoWidget)
         self.chooseVideo.triggered.connect(self.openFile)
+        self.videoChosed = False
 
         # настройка порта
         self.ser = serial.Serial()
         self.ser.baudrate = 57600
+        self.port = ""
+        self.choosePort.triggered.connect(self.inputCom)
 
     # запускает таймер, который работает сколько влезет, пауза кнопкой
     def start_timer(self):
@@ -67,6 +70,14 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.curve2.setData(self.data2)
 
         else:
+            if self.port == "":
+                QMessageBox.about(self, "Ошибка!", "Выберите COM порт!")
+                return
+
+            if not self.videoChosed:
+                QMessageBox.about(self, "Ошибка!", "Выберите видеофайл для воспроизведения!")
+                return
+
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
@@ -75,7 +86,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.timer = QtCore.QTimer()
 
             #открытие порта
-            self.ser.port = 'COM11'
+            self.ser.port = self.port
             if not self.ser.isOpen():
                 self.ser.open()
 
@@ -155,6 +166,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     QDir.homePath())
 
             if fileName != '':
+                self.videoChosed = True
                 self.mediaPlayer.setMedia(
                         QMediaContent(QUrl.fromLocalFile(fileName)))
 
@@ -194,6 +206,13 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         ch2 = conv2sig(self.ser.read(), self.ser.read())
 
         return ch1, ch2
+
+    def inputCom(self):
+
+        text, ok = QInputDialog.getText(self, 'Выбор COM порта', 'Введите номер COM порта, к которому подключено устройство:')
+
+        if ok:
+            self.port = 'COM' + text
 
 def main():
     #import pyqtgraph.examples
