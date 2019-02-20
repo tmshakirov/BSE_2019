@@ -6,7 +6,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox
+from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QAction
 import design  # Это наш конвертированный файл дизайна
 
 
@@ -35,6 +35,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.data1 = []
         self.data2 = []
         self.timings = []
+        self.emotions = []
         self.counter = 0
         self.counter1 = 0
 
@@ -53,49 +54,87 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.port = ""
         self.choosePort.triggered.connect(self.inputCom)
 
+        # файл
+        self.fname = 'test.emtn'
+        self.vidFileName = ""
+        self.f = open(self.fname, 'r')
+
+        # для считки
+        self.fromFile = False
+        act = QAction("Choose File", self)
+        act.triggered.connect(self.loadFile)
+        self.openPrevSession.addAction(act)
+
+        act1 = QAction("Cancel", self)
+        act1.triggered.connect(self.cancel)
+        self.openPrevSession.addAction(act1)
+
+    def cancel(self):
+        self.fromFile = False
+
+    def stop(self):
+        self.startButton.setText("Запустить")
+        self.timer.stop()
+        self.timer.deleteLater()
+        self.mediaPlayer.stop()
+        self.clicked = False
+
+        # show all in graphics
+        xdict = dict(enumerate(self.timings))
+        self.plot1.getAxis('bottom').setTicks([xdict.items()])
+        self.curve1.setData(self.data1)
+        self.plot2.getAxis('bottom').setTicks([xdict.items()])
+        self.curve2.setData(self.data2)
+
+        # close file
+        self.f.close()
+
     # запускает таймер, который работает сколько влезет, пауза кнопкой
     def start_timer(self):
         if self.clicked:
-            self.startButton.setText("Запустить")
-            self.timer.stop()
-            self.timer.deleteLater()
-            self.mediaPlayer.stop()
-            self.clicked = False
-
-            # show all in graphics
-            xdict = dict(enumerate(self.timings))
-            self.plot1.getAxis('bottom').setTicks([xdict.items()])
-            self.curve1.setData(self.data1)
-            self.plot2.getAxis('bottom').setTicks([xdict.items()])
-            self.curve2.setData(self.data2)
+            self.stop()
 
         else:
-            if self.port == "":
-                QMessageBox.about(self, "Ошибка!", "Выберите COM порт!")
-                return
+            if not self.fromFile:
 
-            if not self.videoChosed:
-                QMessageBox.about(self, "Ошибка!", "Выберите видеофайл для воспроизведения!")
-                return
+                if self.port == "":
+                    QMessageBox.about(self, "Ошибка!", "Выберите COM порт!")
+                    return
+
+                if not self.videoChosed:
+                    QMessageBox.about(self, "Ошибка!", "Выберите видеофайл для воспроизведения!")
+                    return
+
+                # открытие порта
+                self.ser.port = self.port
+                if not self.ser.isOpen():
+                    try:
+                        self.ser.open()
+                    except serial.SerialException:
+                        QMessageBox.about(self, "Ошибка!", "Выберите работающий COM порт!")
+                        return
+
+                # reset data for graphs
+                self.data1 = []
+                self.data2 = []
+                self.timings = []
+                self.emotions = []
+                self.plot1.getAxis('bottom').setTicks([])
+                self.plot2.getAxis('bottom').setTicks([])
+
+                # new file
+                self.f = open(self.fname, 'w')
+                self.f.write(self.vidFileName + "\n")
 
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
 
+            self.mediaPlayer.setMedia(
+                QMediaContent(QUrl.fromLocalFile(self.vidFileName)))
+
             self.time = QtCore.QTime(0, 0, 0)
             self.timer = QtCore.QTimer()
-
-            #открытие порта
-            self.ser.port = self.port
-            if not self.ser.isOpen():
-                self.ser.open()
-
-            # reset data for graphs
-            self.data1 = []
-            self.data2 = []
-            self.timings = []
-            self.plot1.getAxis('bottom').setTicks([])
-            self.plot2.getAxis('bottom').setTicks([])
 
             self.timer.timeout.connect(self.update)
             self.timer.start(4)
@@ -108,23 +147,43 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.counter += 1
         # заглушка для считываемого потока
-        #x = random.randint(0, 100)
-        #y = random.randint(0, 100)
+        # x = random.randint(0, 100)
+        # y = random.randint(0, 100)
         ########################
 
-        #считка с устройства
-        ch1, ch2 = self.readFromEEG()
+        if not self.fromFile:
+            # считка с устройства
+            ch1, ch2 = self.readFromEEG()
 
+            # получаем эмоцию
+            emtn = str(ch1) + " : " + str(ch2)
+
+        # точки выводятся каждые 100 мс
         interval = 100 / 4
-        # increase timings
         if self.counter >= interval:
             interval *= 4
             self.counter = 0
+
+            # добавляем точки только если их надо считывать
+            if not self.fromFile:
+                self.time = self.time.addMSecs(interval)
+                self.timings.append(self.time.toString('mm:ss.zzz'))
+                self.emotions.append(emtn)
+                self.data1.append(ch1)
+                self.data2.append(ch2)
+
+                # запись в файл
+                self.f.write(str(ch1) + "|" + str(ch2) + "|" + self.time.toString('mm:ss.zzz') + "|" + emtn + "\n")
+
+            # все отображается по готовому набору данных и прокручивается каунтером1
+            self.EmotionLabel.setText(self.emotions[self.counter1])
+            self.updateGraphs()
             self.counter1 += 1
-            self.time = self.time.addMSecs(interval)
-            self.timings.append(self.time.toString('mm:ss.zzz'))
-            self.EmotionLabel.setText(str(ch1))
-            self.updateGraphs(ch1, ch2)
+
+            # если все данные уже показаны то стоп
+            if self.fromFile and self.counter1 >= len(self.data1):
+                self.stop()
+
 
     def setGraphs(self):
         # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
@@ -139,9 +198,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot2.setRange(xRange=[0, 100])
         self.plot2.setLimits(xMin=0)
 
-    def updateGraphs(self, x, y):
-        # increase first graph
-        self.data1.append(x)
+    def updateGraphs(self):
 
         numbp = 200
         # скорость прокрутки - выводятся последние numbp точек
@@ -149,26 +206,22 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if pos < 0:
             pos = 0
 
-        self.curve1.setData(self.data1[pos:self.counter1])
         xdict = dict(enumerate(self.timings[pos:self.counter1]))
+
+        self.curve1.setData(self.data1[pos:self.counter1])
         self.plot1.getAxis('bottom').setTicks([xdict.items()])
         self.plot1.setXRange(0, numbp)
-
-        # increase second graph
-        self.data2.append(y)
 
         self.curve2.setData(self.data2[pos:self.counter1])
         self.plot2.getAxis('bottom').setTicks([xdict.items()])
         self.plot2.setXRange(0, numbp)
 
     def openFile(self):
-            fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
+            self.vidFileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
                     QDir.homePath())
 
-            if fileName != '':
+            if self.vidFileName != '':
                 self.videoChosed = True
-                self.mediaPlayer.setMedia(
-                        QMediaContent(QUrl.fromLocalFile(fileName)))
 
     def readFromEEG(self):
         gotBegin = False
@@ -214,14 +267,52 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if ok:
             self.port = 'COM' + text
 
+            self.ser.port = self.port
+            if not self.ser.isOpen():
+                try:
+                    self.ser.open()
+                except serial.SerialException:
+                    QMessageBox.about(self, "Ошибка!", "Выберите работающий COM порт!")
+
+    def loadFile(self):
+
+        path, _ = QFileDialog.getOpenFileName(self, "Open File",
+                                                          QDir.homePath())
+        if path != '':
+            self.fromFile = True
+            f = open(path, 'r')
+
+            allLines = f.readlines()
+            f.close()
+
+            self.vidFileName = allLines[0]
+            self.vidFileName = self.vidFileName[:-1]
+            allLines.remove(allLines[0])
+
+            # reset data for graphs
+            self.data1 = []
+            self.data2 = []
+            self.timings = []
+            self.emotions = []
+            self.plot1.getAxis('bottom').setTicks([])
+            self.plot2.getAxis('bottom').setTicks([])
+
+            for line in allLines:
+                x = line.split('|')
+
+                self.data1.append(int(x[0]))
+                self.data2.append(int(x[1]))
+                self.timings.append(x[2])
+                self.emotions.append(x[3])
+
+
 def main():
-    #import pyqtgraph.examples
-    #pyqtgraph.examples.run()
 
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = MindReaderApp()  # Создаём объект класса ExampleApp
     window.show()  # Показываем окно
     app.exec_()  # и запускаем приложение
+
 
 if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
     main()  # то запускаем функцию main()
