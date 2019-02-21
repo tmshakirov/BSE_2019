@@ -58,7 +58,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # файл
         self.fname = 'test.emtn'
         self.vidFileName = ""
-        self.f = open(self.fname, 'r')
+        self.f = open(self.fname, 'a')
 
         # для считки
         self.fromFile = False
@@ -71,7 +71,9 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.openPrevSession.addAction(act1)
 
         # эмоции
-        self.setEmotions.clicked.connect(self.openSettings)
+        self.settings = SettingsWindow()
+        self.setEmotions.triggered.connect(self.openSettings)
+        self.emotionsList = []
 
     def cancel(self):
         self.fromFile = False
@@ -133,6 +135,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.counter = 0
             self.counter1 = 0
 
+            self.emotionsList = self.settings.emotions
             self.mediaPlayer.setMedia(
                 QMediaContent(QUrl.fromLocalFile(self.vidFileName)))
 
@@ -309,39 +312,40 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.emotions.append(x[3])
 
     def openSettings(self):
-        settings = SettingsWindow(self.emotions)
-        settings.show()
+        self.settings.show()
     
-class SettingsWindow(QtWidgets.QApplication, settingsdesign.Ui_MainWindow):
+class SettingsWindow(QtWidgets.QMainWindow, settingsdesign.Ui_MainWindow):
 
-    def __init__(self, mainwindow):
-        super.init()
+    def __init__(self):
+        super().__init__()
         self.setupUi(self)
-        self._emotions = mainwindow.emotions;
+        self.emotions = []
 
         # когда нажимаем на кнопку "добавить эмоцию"
-        self.addButton.clicked.connect(self.addItem(self._emotions, mainwindow))
+        self.addButton.clicked.connect(self.addItem)
 
         # суем emotions[] в listView
-        model = QtGui.QStandardItemMode()
-        self.emotionsView.setModel(model)
-        for i in self._emotions:
-            item = QtGui.QStandardItem(i)
-            model.appendRow(item)
+        self.model = QtGui.QStandardItemModel()
+        self.emotionsView.setModel(self.model)
+        # for i in self.emotions:
+        #     item = QtGui.QStandardItem(i.name)
+        #     self.model.appendRow(item)
 
-    def addItem(self, emotions, mainwindow):
+    def addItem(self):
 
         # создаем новую эмоцию из данных в лейблах
-        emotion = Emotion(self.emotionName, self.emotionStrength, self.emotionColor)
+        emotion = Emotion(self.emotionName.text(), int(self.emotionStrength.text()), int(self.emotionColor.text()))
 
         # записываем ее в листвью
-        model = QtGui.QStandardItemMode()
-        self.emotionsView.setModel(model)
-        model.appendRow(QtGui.QStandardItem(emotion))
+        self.model.appendRow(QtGui.QStandardItem(emotion.name + ": " + str(emotion.strength) + "/" + str(emotion.color)))
 
         # добавляем в экземпляр класса MindReaderApp
-        emotions.addItem(emotion)
-        mainwindow.emotions = emotions
+        self.emotions.append(emotion)
+
+        # clear
+        self.emotionName.setText("")
+        self.emotionStrength.setText("")
+        self.emotionColor.setText("")
 
 class Emotion(object):
     
@@ -351,8 +355,8 @@ class Emotion(object):
 
     def __init__(self, n, s, c):
         self.name = n
-        self.s = s
-        self.c = c
+        self.strength = s
+        self.color = c
         
 def main():
 
