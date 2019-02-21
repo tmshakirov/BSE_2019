@@ -1,3 +1,4 @@
+import os
 import random
 import sys  # sys нужен для передачи argv в QApplication
 
@@ -56,9 +57,12 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.choosePort.triggered.connect(self.inputCom)
 
         # файл
-        self.fname = 'test.emtn'
+        self.fname = 'previousSession.emtn'
+        if not os.path.isfile(self.fname):
+            self.f = open(self.fname, 'w')
+            self.f.close()
         self.vidFileName = ""
-        self.f = open(self.fname, 'a')
+        self.f = open(self.fname, 'r')
 
         # для считки
         self.fromFile = False
@@ -162,7 +166,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             ch1, ch2 = self.readFromEEG()
 
             # получаем эмоцию
-            emtn = str(ch1) + " : " + str(ch2)
+            emtn = self.getEmotion(ch1, ch2)
 
         # точки выводятся каждые 100 мс
         interval = 100 / 4
@@ -182,27 +186,13 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.f.write(str(ch1) + "|" + str(ch2) + "|" + self.time.toString('mm:ss.zzz') + "|" + emtn + "\n")
 
             # все отображается по готовому набору данных и прокручивается каунтером1
-            self.EmotionLabel.setText(self.emotions[self.counter1])
+            self.EmotionLabel.setText("Текущая эмоция: " + self.emotions[self.counter1])
             self.updateGraphs()
             self.counter1 += 1
 
             # если все данные уже показаны то стоп
             if self.fromFile and self.counter1 >= len(self.data1):
                 self.stop()
-
-
-    def setGraphs(self):
-        # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
-        # Use automatic downsampling and clipping to reduce the drawing load
-        self.plot1.setDownsampling(mode='peak')
-        self.plot1.setClipToView(True)
-        self.plot1.setRange(xRange=[0, 100])
-        self.plot1.setLimits(xMin=0)
-
-        self.plot2.setDownsampling(mode='peak')
-        self.plot2.setClipToView(True)
-        self.plot2.setRange(xRange=[0, 100])
-        self.plot2.setLimits(xMin=0)
 
     def updateGraphs(self):
 
@@ -221,6 +211,32 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.curve2.setData(self.data2[pos:self.counter1])
         self.plot2.getAxis('bottom').setTicks([xdict.items()])
         self.plot2.setXRange(0, numbp)
+
+    def getEmotion(self, ch1, ch2):
+
+        for emt in self.emotionsList:
+            isRight = False
+            if emt.from_strength <= ch1 <= emt.to_strength:
+                if emt.from_color <= ch2 <= emt.to_color:
+                    isRight = True
+
+            if isRight:
+                return emt.name
+
+        return "не определена"
+
+    def setGraphs(self):
+        # self.win.setWindowTitle('pyqtgraph example: Scrolling Plots')
+        # Use automatic downsampling and clipping to reduce the drawing load
+        self.plot1.setDownsampling(mode='peak')
+        self.plot1.setClipToView(True)
+        self.plot1.setRange(xRange=[0, 100])
+        self.plot1.setLimits(xMin=0)
+
+        self.plot2.setDownsampling(mode='peak')
+        self.plot2.setClipToView(True)
+        self.plot2.setRange(xRange=[0, 100])
+        self.plot2.setLimits(xMin=0)
 
     def openFile(self):
             self.vidFileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
@@ -334,29 +350,35 @@ class SettingsWindow(QtWidgets.QMainWindow, settingsdesign.Ui_MainWindow):
     def addItem(self):
 
         # создаем новую эмоцию из данных в лейблах
-        emotion = Emotion(self.emotionName.text(), int(self.emotionStrength.text()), int(self.emotionColor.text()))
+        emotion = Emotion(self.emotionName.text(), int(self.emotionStrength1.text()), int(self.emotionStrength2.text()), int(self.emotionColor1.text()), int(self.emotionColor2.text()))
 
         # записываем ее в листвью
-        self.model.appendRow(QtGui.QStandardItem(emotion.name + ": " + str(emotion.strength) + "/" + str(emotion.color)))
+        self.model.appendRow(QtGui.QStandardItem(emotion.name + ": " + str(emotion.from_strength) + "/" + str(emotion.to_strength) + "/" + str(emotion.from_color) + "/" + str(emotion.to_color)))
 
         # добавляем в экземпляр класса MindReaderApp
         self.emotions.append(emotion)
 
         # clear
         self.emotionName.setText("")
-        self.emotionStrength.setText("")
-        self.emotionColor.setText("")
+        self.emotionStrength1.setText("")
+        self.emotionStrength2.setText("")
+        self.emotionColor1.setText("")
+        self.emotionColor2.setText("")
 
 class Emotion(object):
     
     name = ""
-    strength = 0
-    color = 0
+    from_strength = 0
+    to_strength = 0
+    from_color = 0
+    to_color = 0
 
-    def __init__(self, n, s, c):
+    def __init__(self, n, fs, ts, fc, tc):
         self.name = n
-        self.strength = s
-        self.color = c
+        self.from_strength = fs
+        self.to_strength = ts
+        self.from_color = fc
+        self.to_color = tc
         
 def main():
 

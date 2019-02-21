@@ -106,22 +106,22 @@
      <string>Окраска эмоции</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="emotionStrength">
+   <widget class="QLineEdit" name="emotionStrength1">
     <property name="geometry">
      <rect>
-      <x>170</x>
+      <x>190</x>
       <y>270</y>
-      <width>131</width>
+      <width>41</width>
       <height>20</height>
      </rect>
     </property>
    </widget>
-   <widget class="QLineEdit" name="emotionColor">
+   <widget class="QLineEdit" name="emotionColor1">
     <property name="geometry">
      <rect>
-      <x>170</x>
+      <x>190</x>
       <y>300</y>
-      <width>131</width>
+      <width>41</width>
       <height>20</height>
      </rect>
     </property>
@@ -142,6 +142,98 @@
     </property>
     <property name="text">
      <string>Добавить эмоцию</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="emotionStrength2">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>270</y>
+      <width>41</width>
+      <height>20</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="emotionColor2">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>300</y>
+      <width>41</width>
+      <height>20</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="emotionStrengthLabel_2">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>270</y>
+      <width>21</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>от</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="emotionStrengthLabel_3">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>300</y>
+      <width>21</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>от</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="emotionStrengthLabel_4">
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>270</y>
+      <width>21</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>до</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="emotionStrengthLabel_5">
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>300</y>
+      <width>21</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>до</string>
     </property>
    </widget>
   </widget>

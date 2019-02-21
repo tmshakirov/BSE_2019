@@ -23,7 +23,7 @@ class Ui_MainWindow(object):
         self.startButton.setFont(font)
         self.startButton.setObjectName("startButton")
         self.EmotionLabel = QtWidgets.QLabel(self.centralwidget)
-        self.EmotionLabel.setGeometry(QtCore.QRect(10, 20, 61, 21))
+        self.EmotionLabel.setGeometry(QtCore.QRect(10, 20, 1121, 21))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.EmotionLabel.setFont(font)
