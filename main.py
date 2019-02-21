@@ -4,11 +4,12 @@ import sys  # sys нужен для передачи argv в QApplication
 import serial
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+from PyQt5 import QtGui
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QAction
 import design  # Это наш конвертированный файл дизайна
-
+import settingsdesign  # Файл дизайна настроек
 
 class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
@@ -69,6 +70,9 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         act1.triggered.connect(self.cancel)
         self.openPrevSession.addAction(act1)
 
+        # эмоции
+        self.setEmotions.clicked.connect(self.openSettings)
+
     def cancel(self):
         self.fromFile = False
 
@@ -125,7 +129,6 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 # new file
                 self.f = open(self.fname, 'w')
                 self.f.write(self.vidFileName + "\n")
-
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
@@ -305,11 +308,56 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.timings.append(x[2])
                 self.emotions.append(x[3])
 
+    def openSettings(self):
+        settings = SettingsWindow(self.emotions)
+        settings.show()
+    
+class SettingsWindow(QtWidgets.QApplication, settingsdesign.Ui_MainWindow):
 
+    def __init__(self, mainwindow):
+        super.init()
+        self.setupUi(self)
+        self._emotions = mainwindow.emotions;
+
+        # когда нажимаем на кнопку "добавить эмоцию"
+        self.addButton.clicked.connect(self.addItem(self._emotions, mainwindow))
+
+        # суем emotions[] в listView
+        model = QtGui.QStandardItemMode()
+        self.emotionsView.setModel(model)
+        for i in self._emotions:
+            item = QtGui.QStandardItem(i)
+            model.appendRow(item)
+
+    def addItem(self, emotions, mainwindow):
+
+        # создаем новую эмоцию из данных в лейблах
+        emotion = Emotion(self.emotionName, self.emotionStrength, self.emotionColor)
+
+        # записываем ее в листвью
+        model = QtGui.QStandardItemMode()
+        self.emotionsView.setModel(model)
+        model.appendRow(QtGui.QStandardItem(emotion))
+
+        # добавляем в экземпляр класса MindReaderApp
+        emotions.addItem(emotion)
+        mainwindow.emotions = emotions
+
+class Emotion(object):
+    
+    name = ""
+    strength = 0
+    color = 0
+
+    def __init__(self, n, s, c):
+        self.name = n
+        self.s = s
+        self.c = c
+        
 def main():
 
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
-    window = MindReaderApp()  # Создаём объект класса ExampleApp
+    window = MindReaderApp()  # Создаём объект класса MindReaderApp
     window.show()  # Показываем окно
     app.exec_()  # и запускаем приложение
 
