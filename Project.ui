@@ -144,7 +144,7 @@
     <property name="title">
      <string>Настройки</string>
     </property>
-    <addaction name="setUser"/>
+    <addaction name="setEmotionsData"/>
     <addaction name="setEmotions"/>
     <addaction name="chooseVideo"/>
     <addaction name="choosePort"/>
@@ -172,9 +172,9 @@
     <string>Выбрать видеофайл</string>
    </property>
   </action>
-  <action name="setUser">
+  <action name="setEmotionsData">
    <property name="text">
-    <string>Настроить данные пользователя</string>
+    <string>Загрузить определяемые эмоции</string>
    </property>
   </action>
  </widget>

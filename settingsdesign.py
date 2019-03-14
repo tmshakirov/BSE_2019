@@ -2,17 +2,16 @@
 
 # Form implementation generated from reading ui file 'Settings.ui'
 #
-# Created by: PyQt5 UI code generator 5.12
+# Created by: PyQt5 UI code generator 5.10.1
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(322, 403)
+        MainWindow.resize(322, 455)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
@@ -52,9 +51,9 @@ class Ui_MainWindow(object):
         self.emotionColor1.setGeometry(QtCore.QRect(190, 300, 41, 20))
         self.emotionColor1.setObjectName("emotionColor1")
         self.addButton = QtWidgets.QPushButton(self.centralwidget)
-        self.addButton.setGeometry(QtCore.QRect(70, 340, 161, 41))
+        self.addButton.setGeometry(QtCore.QRect(10, 340, 130, 40))
         font = QtGui.QFont()
-        font.setPointSize(12)
+        font.setPointSize(10)
         self.addButton.setFont(font)
         self.addButton.setObjectName("addButton")
         self.emotionStrength2 = QtWidgets.QLineEdit(self.centralwidget)
@@ -87,6 +86,18 @@ class Ui_MainWindow(object):
         font.setPointSize(12)
         self.emotionStrengthLabel_5.setFont(font)
         self.emotionStrengthLabel_5.setObjectName("emotionStrengthLabel_5")
+        self.deleteButton = QtWidgets.QPushButton(self.centralwidget)
+        self.deleteButton.setGeometry(QtCore.QRect(180, 340, 130, 40))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.deleteButton.setFont(font)
+        self.deleteButton.setObjectName("deleteButton")
+        self.saveButton = QtWidgets.QPushButton(self.centralwidget)
+        self.saveButton.setGeometry(QtCore.QRect(80, 390, 150, 40))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.saveButton.setFont(font)
+        self.saveButton.setObjectName("saveButton")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -107,5 +118,6 @@ class Ui_MainWindow(object):
         self.emotionStrengthLabel_3.setText(_translate("MainWindow", "от"))
         self.emotionStrengthLabel_4.setText(_translate("MainWindow", "до"))
         self.emotionStrengthLabel_5.setText(_translate("MainWindow", "до"))
-
+        self.deleteButton.setText(_translate("MainWindow", "Удалить эмоцию"))
+        self.saveButton.setText(_translate("MainWindow", "Сохранить настройки"))
 

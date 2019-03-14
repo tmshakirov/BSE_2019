@@ -2,12 +2,11 @@
 
 # Form implementation generated from reading ui file 'Project.ui'
 #
-# Created by: PyQt5 UI code generator 5.12
+# Created by: PyQt5 UI code generator 5.10.1
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -68,9 +67,9 @@ class Ui_MainWindow(object):
         self.setEmotions.setObjectName("setEmotions")
         self.chooseVideo = QtWidgets.QAction(MainWindow)
         self.chooseVideo.setObjectName("chooseVideo")
-        self.setUser = QtWidgets.QAction(MainWindow)
-        self.setUser.setObjectName("setUser")
-        self.settings.addAction(self.setUser)
+        self.setEmotionsData = QtWidgets.QAction(MainWindow)
+        self.setEmotionsData.setObjectName("setEmotionsData")
+        self.settings.addAction(self.setEmotionsData)
         self.settings.addAction(self.setEmotions)
         self.settings.addAction(self.chooseVideo)
         self.settings.addAction(self.choosePort)
@@ -85,16 +84,15 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.startButton.setText(_translate("MainWindow", "Запуск"))
         self.EmotionLabel.setText(_translate("MainWindow", "Эмоция:"))
-        self.graphLabel1.setText(_translate("MainWindow", "Сила эмоции"))
-        self.graphLabel2.setText(_translate("MainWindow", "Окраска эмоции"))
+        self.graphLabel1.setText(_translate("MainWindow", "Окраска эмоции"))
+        self.graphLabel2.setText(_translate("MainWindow", "Сила эмоции"))
         self.openPrevSession.setTitle(_translate("MainWindow", "Загрузить предыдущую сессию работы"))
         self.settings.setTitle(_translate("MainWindow", "Настройки"))
         self.action.setText(_translate("MainWindow", "Загрузить предыдущую сессию"))
         self.choosePort.setText(_translate("MainWindow", "Выбрать порт"))
         self.setEmotions.setText(_translate("MainWindow", "Настроить определяемые эмоции"))
         self.chooseVideo.setText(_translate("MainWindow", "Выбрать видеофайл"))
-        self.setUser.setText(_translate("MainWindow", "Настроить данные пользователя"))
-
+        self.setEmotionsData.setText(_translate("MainWindow", "Загрузить определяемые эмоции"))
 
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from pyqtgraph import GraphicsLayoutWidget
