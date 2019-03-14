@@ -173,12 +173,14 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def update(self):
 
         self.counter += 1
-        # заглушка для считываемого потока
-        # x = random.randint(0, 100)
-        # y = random.randint(0, 100)
-        ########################
 
         if not self.fromFile:
+
+            # заглушка для считываемого потока
+            # ch1 = random.randint(0, 10)
+            # ch2 = random.randint(0, 10)
+            ########################
+
             # считка с устройства
             ch1, ch2 = self.readFromEEG()
 
@@ -315,18 +317,40 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def loadFile(self):
 
-        path, _ = QFileDialog.getOpenFileName(self, "Открыть файл",
+        try:
+            path, _ = QFileDialog.getOpenFileName(self, "Открыть файл",
                                                           QDir.homePath(), "Emotion Files (*.emtn)")
-        if path != '':
-            self.fromFile = True
-            f = open(path, 'r')
+            if path != '':
+                self.fromFile = True
+                f = open(path, 'r')
 
-            allLines = f.readlines()
-            f.close()
+                allLines = f.readlines()
+                f.close()
 
-            self.vidFileName = allLines[0]
-            self.vidFileName = self.vidFileName[:-1]
-            allLines.remove(allLines[0])
+                self.vidFileName = allLines[0]
+                self.vidFileName = self.vidFileName[:-1]
+                allLines.remove(allLines[0])
+
+                if len(allLines) == 0:
+                    raise Exception('')
+
+                # reset data for graphs
+                self.data1 = []
+                self.data2 = []
+                self.timings = []
+                self.emotions = []
+                self.plot1.getAxis('bottom').setTicks([])
+                self.plot2.getAxis('bottom').setTicks([])
+
+                for line in allLines:
+                    x = line.split('|')
+                    self.data1.append(int(x[0]))
+                    self.data2.append(int(x[1]))
+                    self.timings.append(x[2])
+                    self.emotions.append(x[3])
+
+        except:
+            self.fromFile = False
 
             # reset data for graphs
             self.data1 = []
@@ -336,13 +360,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.plot1.getAxis('bottom').setTicks([])
             self.plot2.getAxis('bottom').setTicks([])
 
-            for line in allLines:
-                x = line.split('|')
-
-                self.data1.append(int(x[0]))
-                self.data2.append(int(x[1]))
-                self.timings.append(x[2])
-                self.emotions.append(x[3])
+            QMessageBox.about(self, "Ошибка!", "Выберите корректный файл!")
+            return
 
     def loadSettings(self):
 
