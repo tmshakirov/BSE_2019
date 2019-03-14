@@ -149,7 +149,6 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 # new file
                 self.f = open(self.fname, 'w')
                 self.f.write(self.vidFileName + "\n")
-                self.f.close()
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
