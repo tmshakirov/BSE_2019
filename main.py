@@ -152,7 +152,6 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if path != '':
                     self.f = open(path, 'w+')
                     self.f.write(self.vidFileName + "\n")
-                    self.f.close()
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
@@ -360,7 +359,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             for line in allLines:
                 s = line.rstrip("\r\n")
                 x = s.split('|')
-                emotion = Emotion(x[0], x[1], x[2], x[3], x[4])
+                emotion = Emotion(x[0], int(x[1]), int(x[2]), int(x[3]), int(x[4]))
                 self.emotions.append(emotion)
             self.settings.loadEmotions(self.emotions)
             msg = QMessageBox()
