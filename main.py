@@ -365,29 +365,32 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def loadSettings(self):
 
-        path, _ = QFileDialog.getOpenFileName(self, "Открыть настройки",
+        try:
+            path, _ = QFileDialog.getOpenFileName(self, "Открыть настройки",
                                                           QDir.homePath(), "txt files (*.txt)")
-        if path != '':
-            f = open(path, 'r')
+            if path != '':
+                f = open(path, 'r')
 
-            allLines = f.readlines()
-            f.close()
+                allLines = f.readlines()
+                f.close()
 
-            # считываем данные из файла и записываем эмоции
-            self.emotions.clear()
-            for line in allLines:
-                s = line.rstrip("\r\n")
-                x = s.split('|')
-                emotion = Emotion(x[0], int(x[1]), int(x[2]), int(x[3]), int(x[4]))
-                self.emotions.append(emotion)
-            self.settings.loadEmotions(self.emotions)
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setText("Настройки загружены из файла.")
-            msg.setWindowTitle("Уведомление")
-            msg.exec_()
-            self.openSettings()
-    
+                # считываем данные из файла и записываем эмоции
+                self.emotions.clear()
+                for line in allLines:
+                    s = line.rstrip("\r\n")
+                    x = s.split('|')
+                    emotion = Emotion(x[0], int(x[1]), int(x[2]), int(x[3]), int(x[4]))
+                    self.emotions.append(emotion)
+                self.settings.loadEmotions(self.emotions)
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Настройки загружены из файла.")
+                msg.setWindowTitle("Уведомление")
+                msg.exec_()
+                self.openSettings()
+        except:
+            QMessageBox.about(self, "Ошибка!", "Выберите корректный файл!")
+            return
 
     def openSettings(self):
         self.settings.show()
