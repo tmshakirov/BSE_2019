@@ -147,8 +147,11 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.plot2.getAxis('bottom').setTicks([])
 
                 # new file
-                self.f = open(self.fname, 'w')
-                self.f.write(self.vidFileName + "\n")
+                path, _ = QFileDialog.getSaveFileName(self, "Сохранить сессию",
+                                                                  QDir.homePath(), "Emotion Files (*.emtn)")
+                if path != '':
+                    self.f = open(path, 'w+')
+                    self.f.write(self.vidFileName + "\n")
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
