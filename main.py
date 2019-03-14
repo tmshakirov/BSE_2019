@@ -444,7 +444,7 @@ class SettingsWindow(QtWidgets.QMainWindow, settingsdesign.Ui_MainWindow):
         if path != '':
             f = open(path, 'w+')
             for emotion in self.emotions:
-                f.write(emotion.name + "|" + str(emotion.from_strength) + "|" + str(emotion.to_strength) + "|" + str(emotion.from_color) + "|" + str(emotion.to_color))
+                f.write(emotion.name + "|" + str(emotion.from_strength) + "|" + str(emotion.to_strength) + "|" + str(emotion.from_color) + "|" + str(emotion.to_color) + "\n")
             f.close()
 
 class Emotion(object):
