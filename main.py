@@ -20,6 +20,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
+        self.setWindowTitle("MindReader")
+
         self.startButton.clicked.connect(self.start_timer)
 
         self.timer = QtCore.QTimer()
@@ -66,13 +68,25 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         # для считки
         self.fromFile = False
-        act = QAction("Choose File", self)
+        act = QAction("Выбрать файл", self)
         act.triggered.connect(self.loadFile)
         self.openPrevSession.addAction(act)
 
-        act1 = QAction("Cancel", self)
+        act1 = QAction("Очистить", self)
         act1.triggered.connect(self.cancel)
         self.openPrevSession.addAction(act1)
+
+        # файл настроек
+        self.sname = 'settings.txt'
+        self.emotions = []
+        if not os.path.isfile(self.sname):
+            self.f = open(self.sname, 'w')
+            self.f.close()
+        self.f = open(self.sname, 'r')
+
+        #для считки настроек из файла
+        self.settings.addAction(self.setEmotions)
+        self.setEmotionsData.triggered.connect(self.loadSettings)
 
         # эмоции
         self.settings = SettingsWindow()
@@ -133,8 +147,12 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.plot2.getAxis('bottom').setTicks([])
 
                 # new file
-                self.f = open(self.fname, 'w')
-                self.f.write(self.vidFileName + "\n")
+                path, _ = QFileDialog.getSaveFileName(self, "Сохранить сессию",
+                                                                  QDir.homePath(), "Emotion Files (*.emtn)")
+                if path != '':
+                    self.f = open(path, 'w+')
+                    self.f.write(self.vidFileName + "\n")
+                    self.f.close()
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
@@ -239,7 +257,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.plot2.setLimits(xMin=0)
 
     def openFile(self):
-            self.vidFileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
+            self.vidFileName, _ = QFileDialog.getOpenFileName(self, "Открыть видео",
                     QDir.homePath())
 
             if self.vidFileName != '':
@@ -298,8 +316,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def loadFile(self):
 
-        path, _ = QFileDialog.getOpenFileName(self, "Open File",
-                                                          QDir.homePath())
+        path, _ = QFileDialog.getOpenFileName(self, "Открыть файл",
+                                                          QDir.homePath(), "Emotion Files (*.emtn)")
         if path != '':
             self.fromFile = True
             f = open(path, 'r')
@@ -327,6 +345,32 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.timings.append(x[2])
                 self.emotions.append(x[3])
 
+    def loadSettings(self):
+
+        path, _ = QFileDialog.getOpenFileName(self, "Открыть настройки",
+                                                          QDir.homePath(), "txt files (*.txt)")
+        if path != '':
+            f = open(path, 'r')
+
+            allLines = f.readlines()
+            f.close()
+
+            # считываем данные из файла и записываем эмоции
+            self.emotions.clear()
+            for line in allLines:
+                s = line.rstrip("\r\n")
+                x = s.split('|')
+                emotion = Emotion(x[0], x[1], x[2], x[3], x[4])
+                self.emotions.append(emotion)
+            self.settings.loadEmotions(self.emotions)
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("Настройки загружены из файла.")
+            msg.setWindowTitle("Уведомление")
+            msg.exec_()
+            self.openSettings()
+    
+
     def openSettings(self):
         self.settings.show()
     
@@ -336,9 +380,15 @@ class SettingsWindow(QtWidgets.QMainWindow, settingsdesign.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
         self.emotions = []
-
+        self.setWindowTitle("Настройки")
         # когда нажимаем на кнопку "добавить эмоцию"
         self.addButton.clicked.connect(self.addItem)
+        
+        # когда нажимаем на кнопку "удалить эмоцию"
+        self.deleteButton.clicked.connect(self.deleteItem)
+          
+        # когда нажимаем на кнопку "сохранить настройки"
+        self.saveButton.clicked.connect(self.saveSettings)
 
         # суем emotions[] в listView
         self.model = QtGui.QStandardItemModel()
@@ -347,23 +397,55 @@ class SettingsWindow(QtWidgets.QMainWindow, settingsdesign.Ui_MainWindow):
         #     item = QtGui.QStandardItem(i.name)
         #     self.model.appendRow(item)
 
+    def loadEmotions(self, _emotions):        
+        self.emotions.clear()
+        self.model.removeRows(0, self.model.rowCount())
+        for emotion in _emotions:
+            self.emotions.append(emotion)
+            self.model.appendRow(QtGui.QStandardItem(emotion.name + ": " + str(emotion.from_strength) + "/" + str(emotion.to_strength) + "/" + str(emotion.from_color) + "/" + str(emotion.to_color)))
+
     def addItem(self):
 
-        # создаем новую эмоцию из данных в лейблах
-        emotion = Emotion(self.emotionName.text(), int(self.emotionStrength1.text()), int(self.emotionStrength2.text()), int(self.emotionColor1.text()), int(self.emotionColor2.text()))
+        if self.emotionStrength1.text().isdigit() and self.emotionStrength2.text().isdigit() and self.emotionColor1.text().isdigit() and self.emotionColor2.text().isdigit() and int(self.emotionStrength1.text()) < int(self.emotionStrength2.text()) and int(self.emotionColor1.text()) < int(self.emotionColor2.text()):
+            # создаем новую эмоцию из данных в лейблах
+            emotion = Emotion(self.emotionName.text(), int(self.emotionStrength1.text()), int(self.emotionStrength2.text()), int(self.emotionColor1.text()), int(self.emotionColor2.text()))
 
-        # записываем ее в листвью
-        self.model.appendRow(QtGui.QStandardItem(emotion.name + ": " + str(emotion.from_strength) + "/" + str(emotion.to_strength) + "/" + str(emotion.from_color) + "/" + str(emotion.to_color)))
+            # записываем ее в листвью
+            self.model.appendRow(QtGui.QStandardItem(emotion.name + ": " + str(emotion.from_strength) + "/" + str(emotion.to_strength) + "/" + str(emotion.from_color) + "/" + str(emotion.to_color)))
 
-        # добавляем в экземпляр класса MindReaderApp
-        self.emotions.append(emotion)
+            # добавляем в экземпляр класса MindReaderApp
+            self.emotions.append(emotion)
 
-        # clear
-        self.emotionName.setText("")
-        self.emotionStrength1.setText("")
-        self.emotionStrength2.setText("")
-        self.emotionColor1.setText("")
-        self.emotionColor2.setText("")
+            # clear
+            self.emotionName.setText("")
+            self.emotionStrength1.setText("")
+            self.emotionStrength2.setText("")
+            self.emotionColor1.setText("")
+            self.emotionColor2.setText("")
+        else:
+            # выводим ошибку в случае некорректности данных
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Введен некорректный диапазон.")
+            msg.setWindowTitle("Ошибка!")
+            msg.exec_()
+
+    def deleteItem(self):
+        selectedIndexes = self.emotionsView.selectedIndexes()
+        selectedRows = [item.row() for item in selectedIndexes]
+        modelTmp = self.emotionsView.model()
+        for selectedRow in sorted(selectedRows, reverse = True):
+            modelTmp.removeRow(selectedRow)
+            del self.emotions[selectedRow]
+            
+    def saveSettings(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить данные",
+                                                          QDir.homePath())
+        if path != '':
+            f = open(path, 'w+')
+            for emotion in self.emotions:
+                f.write(emotion.name + "|" + emotion.from_strength + "|" + emotion.to_strength + "|" + emotion.from_color + "|" + emotion.to_color)
+            f.close()
 
 class Emotion(object):
     
