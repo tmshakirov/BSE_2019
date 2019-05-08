@@ -1,11 +1,15 @@
 import os
 import random
 import sys  # sys нужен для передачи argv в QApplication
-
+import numpy as np
+import cv2
 import serial
+import glob
+from numpy.fft import rfft
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
+from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QAction
@@ -21,10 +25,9 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
         self.setWindowTitle("MindReader")
-
         self.startButton.clicked.connect(self.start_timer)
 
-        self.timer = QtCore.QTimer()
+        self.timer = None
         self.time = QtCore.QTime(0, 0, 0)
 
         # настраиваем графики
@@ -49,8 +52,20 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # настройка видео
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.mediaPlayer.setVideoOutput(self.videoWidget)
+        self.facePlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.facePlayer.setVideoOutput(self.faceVideoWidget)
         self.chooseVideo.triggered.connect(self.openFile)
         self.videoChosed = False
+
+        # для записи лица
+        self.videoTimer = None
+        self.frame = None
+        self.capture = None
+        self.fps = int(30)
+        self.frameRatio = 1
+        self.videoSaver = None
+        if not os.path.exists('Recordings'):
+            os.makedirs('Recordings')    
 
         # настройка порта
         self.ser = serial.Serial()
@@ -64,6 +79,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.f = open(self.fname, 'w')
             self.f.close()
         self.vidFileName = ""
+        self.faceFileName = ""
         self.f = open(self.fname, 'r')
 
         # для считки
@@ -93,6 +109,28 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.setEmotions.triggered.connect(self.openSettings)
         self.emotionsList = []
 
+        
+        # проверяем com-порты
+        if sys.platform.startswith('win'):
+            ports = ['COM%s' % (i + 1) for i in range(256)]
+        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+            # this excludes your current terminal "/dev/tty"
+            ports = glob.glob('/dev/tty[A-Za-z]*')
+        elif sys.platform.startswith('darwin'):
+            ports = glob.glob('/dev/tty.*')
+        else:
+            raise EnvironmentError('Unsupported platform')
+
+        result = []
+        for port in ports:
+            try:
+                s = serial.Serial(port)
+                s.close()
+                result.append(port)
+            except (OSError, serial.SerialException):
+                pass
+        print(result)
+
     def cancel(self):
         self.fromFile = False
 
@@ -100,7 +138,9 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.startButton.setText("Запустить")
         self.timer.stop()
         self.timer.deleteLater()
+        self.pause_video()
         self.mediaPlayer.stop()
+        self.facePlayer.stop()
         self.clicked = False
 
         # show all in graphics
@@ -119,8 +159,13 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.stop()
 
         else:
+            if self.fromFile:
+                self.faceVideoWidget.show()
+                self.faceWidget.hide()
+                self.facePlayer.setMedia(
+                    QMediaContent(QUrl.fromLocalFile(self.faceFileName)))
+                self.facePlayer.play()
             if not self.fromFile:
-
                 if self.port == "":
                     QMessageBox.about(self, "Ошибка!", "Выберите COM порт!")
                     return
@@ -138,6 +183,11 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         QMessageBox.about(self, "Ошибка!", "Выберите работающий COM порт!")
                         return
 
+                self.faceVideoWidget.hide()
+                self.faceWidget.show()
+
+                self.set_camera(self.frame)
+
                 # reset data for graphs
                 self.data1 = []
                 self.data2 = []
@@ -147,11 +197,9 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.plot2.getAxis('bottom').setTicks([])
 
                 # new file
-                path, _ = QFileDialog.getSaveFileName(self, "Сохранить сессию",
-                                                                  QDir.homePath(), "Emotion Files (*.emtn)")
-                if path != '':
-                    self.f = open(path, 'w+')
-                    self.f.write(self.vidFileName + "\n")
+                self.f = open(self.fname, 'w')
+                self.f.write(self.vidFileName + "\n")
+                self.f.write(str(self.faceFileName) + "\n")
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
@@ -168,19 +216,93 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             self.mediaPlayer.play()
             self.clicked = True
+    
+    def set_camera(self, frame):
+        try:
+            if not self.fromFile:
+                self.capture = cv2.VideoCapture(0)
+                width = self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height = self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                self.fps = self.capture.get(cv2.CAP_PROP_FPS)
+                if self.fps == 0 or self.fps == -1:
+                    self.fps = int(25)
+                    print("Warning: OpenCV failed to get your camera's frame rate, set to {}.".format(self.fps))
+                # start                
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                self.faceFileName = len([name for name in os.listdir('Recordings') if os.path.isfile(os.path.join('Recordings', name))])
+                self.videoSaver = cv2.VideoWriter('Recordings/{}.avi'.format(self.faceFileName),fourcc, cv2.CAP_PROP_FPS, (int(width), int(height)))
+                self.start_video()
 
-    # то что происходит каждый тик таймера
+        except Exception as e:
+                self.capture = None
+                QMessageBox.about(self, "Ошибка!", "Невозможно использовать вашу камеру.")
+                print(str(e))
+ 
+    
+    def _draw_frame(self, frame):
+        # convert to pixel
+        cvtFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = QImage(cvtFrame, cvtFrame.shape[1], cvtFrame.shape[0], QImage.Format_RGB888)
+        pix = QPixmap.fromImage(img) 
+        self.faceWidget.setPixmap(pix)    
+        self.videoSaver.write(cvtFrame)
+        QtGui.QApplication.processEvents()
+
+    def _next_frame(self):
+        try:
+            if self.capture is not None:
+                _ret, frame = self.capture.read()
+                if frame is None:
+                    QMessageBox.about(self, "Ошибка!", "Ошибка считывания изображения.")
+                    print("ERROR: Read next frame failed with returned value {}.".format(_ret)) 
+ 
+                # Draw.
+                self._draw_frame(frame)
+ 
+        except Exception as e:
+            QMessageBox.about(self, "Ошибка!", "Ошибка считывания изображения.")
+            print(str(e))
+            # Saving output video
+            if self.videoSaver:
+                self.videoSaver.release()
+ 
+        except Exception as e:
+            self.capture = None
+            print("Error: Exception while selecting&opening video file")
+            print(str(e))
+           
+    def start_video(self):
+            self.videoTimer = QtCore.QTimer()
+            self.videoTimer.timeout.connect(self._next_frame)
+            self.videoTimer.start(1000 // self.fps)
+        
+    def pause_video(self):
+        try:
+            if self.capture != None:
+                self.capture.release()
+            self.capture = None
+            self.faceWidget.clear()
+            self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+            self.mediaPlayer.setVideoOutput(self.videoWidget)
+            self.facePlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+            self.facePlayer.setVideoOutput(self.faceVideoWidget)
+            self.faceVideoWidget.show()
+            self.faceWidget.show()
+            cv2.destroyAllWindows()
+            print("INFO: Streaming paused.")
+        except Exception as e:
+            print(str(e))
+
+    # то что происходит каждый тик таймераs
     def update(self):
 
         self.counter += 1
+        # заглушка для считываемого потока
+        # x = random.randint(0, 100)
+        # y = random.randint(0, 100)
+        ########################
 
         if not self.fromFile:
-
-            # заглушка для считываемого потока
-            # ch1 = random.randint(0, 10)
-            # ch2 = random.randint(0, 10)
-            ########################
-
             # считка с устройства
             ch1, ch2 = self.readFromEEG()
 
@@ -306,8 +428,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         text, ok = QInputDialog.getText(self, 'Выбор COM порта', 'Введите номер COM порта, к которому подключено устройство:')
 
         if ok:
-            self.port = 'COM' + text
-
+            self.port = '/dev/ttyUSB' + text
             self.ser.port = self.port
             if not self.ser.isOpen():
                 try:
@@ -317,40 +438,22 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def loadFile(self):
 
-        try:
-            path, _ = QFileDialog.getOpenFileName(self, "Открыть файл",
+        path, _ = QFileDialog.getOpenFileName(self, "Открыть файл",
                                                           QDir.homePath(), "Emotion Files (*.emtn)")
-            if path != '':
-                self.fromFile = True
-                f = open(path, 'r')
+        if path != '':
+            self.fromFile = True
+            f = open(path, 'r', encoding='utf-8', errors='ignore')
 
-                allLines = f.readlines()
-                f.close()
+            allLines = f.readlines()
+            f.close()
 
-                self.vidFileName = allLines[0]
-                self.vidFileName = self.vidFileName[:-1]
-                allLines.remove(allLines[0])
-
-                if len(allLines) == 0:
-                    raise Exception('')
-
-                # reset data for graphs
-                self.data1 = []
-                self.data2 = []
-                self.timings = []
-                self.emotions = []
-                self.plot1.getAxis('bottom').setTicks([])
-                self.plot2.getAxis('bottom').setTicks([])
-
-                for line in allLines:
-                    x = line.split('|')
-                    self.data1.append(int(x[0]))
-                    self.data2.append(int(x[1]))
-                    self.timings.append(x[2])
-                    self.emotions.append(x[3])
-
-        except:
-            self.fromFile = False
+            self.vidFileName = allLines[0]
+            self.vidFileName = self.vidFileName[:-1]
+            
+            self.faceFileName = allLines[1]
+            self.faceFileName = self.faceFileName[:-1]
+            allLines.remove(allLines[0])
+            allLines.remove(allLines[0])
 
             # reset data for graphs
             self.data1 = []
@@ -360,41 +463,43 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.plot1.getAxis('bottom').setTicks([])
             self.plot2.getAxis('bottom').setTicks([])
 
-            QMessageBox.about(self, "Ошибка!", "Выберите корректный файл!")
-            return
+            for line in allLines:
+                x = line.split('|')
+
+                self.data1.append(int(x[0]))
+                self.data2.append(int(x[1]))
+                self.timings.append(x[2])
+                self.emotions.append(x[3])
 
     def loadSettings(self):
 
-        try:
-            path, _ = QFileDialog.getOpenFileName(self, "Открыть настройки",
+        path, _ = QFileDialog.getOpenFileName(self, "Открыть настройки",
                                                           QDir.homePath(), "txt files (*.txt)")
-            if path != '':
-                f = open(path, 'r')
+        if path != '':
+            f = open(path, 'r')
 
-                allLines = f.readlines()
-                f.close()
+            allLines = f.readlines()
+            f.close()
 
-                # считываем данные из файла и записываем эмоции
-                self.emotions.clear()
-                for line in allLines:
-                    s = line.rstrip("\r\n")
-                    x = s.split('|')
-                    emotion = Emotion(x[0], int(x[1]), int(x[2]), int(x[3]), int(x[4]))
-                    self.emotions.append(emotion)
-                self.settings.loadEmotions(self.emotions)
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Information)
-                msg.setText("Настройки загружены из файла.")
-                msg.setWindowTitle("Уведомление")
-                msg.exec_()
-                self.openSettings()
-        except:
-            QMessageBox.about(self, "Ошибка!", "Выберите корректный файл!")
-            return
+            # считываем данные из файла и записываем эмоции
+            self.emotions.clear()
+            for line in allLines:
+                s = line.rstrip("\r\n")
+                x = s.split('|')
+                emotion = Emotion(x[0], int(x[1]), int(x[2]), int(x[3]), int(x[4]))
+                self.emotions.append(emotion)
+            self.settings.loadEmotions(self.emotions)
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("Настройки загружены из файла.")
+            msg.setWindowTitle("Уведомление")
+            msg.exec_()
+            self.openSettings()
+    
 
     def openSettings(self):
         self.settings.show()
-    
+
 class SettingsWindow(QtWidgets.QMainWindow, settingsdesign.Ui_MainWindow):
 
     def __init__(self):
@@ -482,14 +587,13 @@ class Emotion(object):
         self.to_strength = ts
         self.from_color = fc
         self.to_color = tc
-        
+
 def main():
 
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = MindReaderApp()  # Создаём объект класса MindReaderApp
-    window.show()  # Показываем окно
+    window.showMaximized()  # Показываем окно
     app.exec_()  # и запускаем приложение
-
 
 if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
     main()  # то запускаем функцию main()
