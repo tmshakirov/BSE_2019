@@ -5,14 +5,16 @@ import numpy as np
 import cv2
 import serial
 import glob
+import time
 from numpy.fft import rfft
+from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QAction
+from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QAction, QWidget
 import design  # Это наш конвертированный файл дизайна
 import settingsdesign  # Файл дизайна настроек
 
@@ -23,12 +25,14 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # и т.д. в файле design.py
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
-
         self.setWindowTitle("MindReader")
         self.startButton.clicked.connect(self.start_timer)
+        
 
         self.timer = None
         self.time = QtCore.QTime(0, 0, 0)
+
+        self.maxTimer = 0.0
 
         # настраиваем графики
         self.plot1 = self.graphic1.addPlot()
@@ -52,8 +56,15 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # настройка видео
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.mediaPlayer.setVideoOutput(self.videoWidget)
+        self.qw = QWidget()
+        self.qw.setGeometry(10, 360, 611, 280)
+        self.qw.setParent(self)
+        self.faceVideoWidget = QVideoWidget()
+        self.faceVideoWidget.setParent(self.qw)
+        self.faceVideoWidget.show()
         self.facePlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.facePlayer.setVideoOutput(self.faceVideoWidget)
+        self.facePlayer.durationChanged.connect(self.getDuration)
         self.chooseVideo.triggered.connect(self.openFile)
         self.videoChosed = False
 
@@ -74,13 +85,10 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.choosePort.triggered.connect(self.inputCom)
 
         # файл
-        self.fname = 'previousSession.emtn'
-        if not os.path.isfile(self.fname):
-            self.f = open(self.fname, 'w')
-            self.f.close()
+        if not os.path.exists('Sessions'):
+            os.makedirs('Sessions')    
         self.vidFileName = ""
         self.faceFileName = ""
-        self.f = open(self.fname, 'r')
 
         # для считки
         self.fromFile = False
@@ -160,11 +168,12 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         else:
             if self.fromFile:
-                self.faceVideoWidget.show()
                 self.faceWidget.hide()
                 self.facePlayer.setMedia(
                     QMediaContent(QUrl.fromLocalFile(self.faceFileName)))
+                self.qw.show()
                 self.facePlayer.play()
+                self.start = time.time()
             if not self.fromFile:
                 if self.port == "":
                     QMessageBox.about(self, "Ошибка!", "Выберите COM порт!")
@@ -183,7 +192,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         QMessageBox.about(self, "Ошибка!", "Выберите работающий COM порт!")
                         return
 
-                self.faceVideoWidget.hide()
+                self.qw.hide()
                 self.faceWidget.show()
 
                 self.set_camera(self.frame)
@@ -197,9 +206,14 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.plot2.getAxis('bottom').setTicks([])
 
                 # new file
-                self.f = open(self.fname, 'w')
+                self.fname = str(len([name for name in os.listdir('Sessions') if os.path.isfile(os.path.join('Sessions', name))])) + '.emtn'
+                if not os.path.isfile('Sessions/' + self.fname):
+                    self.f = open('Sessions/' + self.fname, 'w')
+                    self.f.close()
+                self.f = open('Sessions/' + self.fname, 'r')
+                self.f = open('Sessions/' + self.fname, 'w')
                 self.f.write(self.vidFileName + "\n")
-                self.f.write(str(self.faceFileName) + "\n")
+                self.f.write(os.getcwd() + '/Recordings/{}.avi'.format(self.faceFileName) + "\n")
             self.startButton.setText("Остановить")
             self.counter = 0
             self.counter1 = 0
@@ -221,8 +235,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         try:
             if not self.fromFile:
                 self.capture = cv2.VideoCapture(0)
-                width = self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)
-                height = self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                self.width = self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)
+                self.height = self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
                 self.fps = self.capture.get(cv2.CAP_PROP_FPS)
                 if self.fps == 0 or self.fps == -1:
                     self.fps = int(25)
@@ -230,7 +244,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 # start                
                 fourcc = cv2.VideoWriter_fourcc(*'XVID')
                 self.faceFileName = len([name for name in os.listdir('Recordings') if os.path.isfile(os.path.join('Recordings', name))])
-                self.videoSaver = cv2.VideoWriter('Recordings/{}.avi'.format(self.faceFileName),fourcc, cv2.CAP_PROP_FPS, (int(width), int(height)))
+                self.videoSaver = cv2.VideoWriter('Recordings/{}.avi'.format(self.faceFileName),fourcc, cv2.CAP_PROP_FPS, (int(self.width), int(self.height)))
                 self.start_video()
 
         except Exception as e:
@@ -242,10 +256,11 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def _draw_frame(self, frame):
         # convert to pixel
         cvtFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = QImage(cvtFrame, cvtFrame.shape[1], cvtFrame.shape[0], QImage.Format_RGB888)
+        img = QImage(cvtFrame, self.width, self.height, QImage.Format_RGB888)
         pix = QPixmap.fromImage(img) 
-        self.faceWidget.setPixmap(pix)    
-        self.videoSaver.write(cvtFrame)
+        self.faceWidget.setPixmap(pix)   
+        outFrame = cv2.cvtColor(cvtFrame, cv2.COLOR_BGR2RGB) 
+        self.videoSaver.write(outFrame)
         QtGui.QApplication.processEvents()
 
     def _next_frame(self):
@@ -265,11 +280,6 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             # Saving output video
             if self.videoSaver:
                 self.videoSaver.release()
- 
-        except Exception as e:
-            self.capture = None
-            print("Error: Exception while selecting&opening video file")
-            print(str(e))
            
     def start_video(self):
             self.videoTimer = QtCore.QTimer()
@@ -284,16 +294,20 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.faceWidget.clear()
             self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
             self.mediaPlayer.setVideoOutput(self.videoWidget)
-            self.facePlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-            self.facePlayer.setVideoOutput(self.faceVideoWidget)
-            self.faceVideoWidget.show()
+            self.qw.show()
             self.faceWidget.show()
+            self.videoSaver = None
             cv2.destroyAllWindows()
+            self.clicked = False
             print("INFO: Streaming paused.")
         except Exception as e:
             print(str(e))
 
-    # то что происходит каждый тик таймераs
+    def getDuration(self):
+        self.maxTimer = float(self.facePlayer.duration()/1000)   
+        print(self.maxTimer)    
+
+    # то что происходит каждый тик таймера
     def update(self):
 
         self.counter += 1
@@ -327,12 +341,13 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.f.write(str(ch1) + "|" + str(ch2) + "|" + self.time.toString('mm:ss.zzz') + "|" + emtn + "\n")
 
             # все отображается по готовому набору данных и прокручивается каунтером1
-            self.EmotionLabel.setText("Текущая эмоция: " + self.emotions[self.counter1])
-            self.updateGraphs()
-            self.counter1 += 1
-
+            if (self.counter1 < len(self.data1)):
+                self.EmotionLabel.setText("Текущая эмоция: " + self.emotions[self.counter1])
+                self.updateGraphs()
+                self.counter1 += 1
+            curTime = time.time()
             # если все данные уже показаны то стоп
-            if self.fromFile and self.counter1 >= len(self.data1):
+            if self.fromFile and (curTime-self.start) > self.maxTimer and self.counter1 >= len(self.data1):
                 self.stop()
 
     def updateGraphs(self):
@@ -446,30 +461,34 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             allLines = f.readlines()
             f.close()
+            try:
+                self.vidFileName = allLines[0]
+                self.vidFileName = self.vidFileName[:-1]
+                
+                self.faceFileName = allLines[1]
+                self.faceFileName = self.faceFileName[:-1]
+                allLines.remove(allLines[0])
+                allLines.remove(allLines[0])
 
-            self.vidFileName = allLines[0]
-            self.vidFileName = self.vidFileName[:-1]
-            
-            self.faceFileName = allLines[1]
-            self.faceFileName = self.faceFileName[:-1]
-            allLines.remove(allLines[0])
-            allLines.remove(allLines[0])
+                # reset data for graphs
+                self.data1 = []
+                self.data2 = []
+                self.timings = []
+                self.emotions = []
+                self.plot1.getAxis('bottom').setTicks([])
+                self.plot2.getAxis('bottom').setTicks([])
 
-            # reset data for graphs
-            self.data1 = []
-            self.data2 = []
-            self.timings = []
-            self.emotions = []
-            self.plot1.getAxis('bottom').setTicks([])
-            self.plot2.getAxis('bottom').setTicks([])
+                for line in allLines:
+                    x = line.split('|')
 
-            for line in allLines:
-                x = line.split('|')
+                    self.data1.append(int(x[0]))
+                    self.data2.append(int(x[1]))
+                    self.timings.append(x[2])
+                    self.emotions.append(x[3])
 
-                self.data1.append(int(x[0]))
-                self.data2.append(int(x[1]))
-                self.timings.append(x[2])
-                self.emotions.append(x[3])
+            except Exception as e:
+                QMessageBox.about(self, "Ошибка!", "Файл поврежден или неверно сформирован.")
+                
 
     def loadSettings(self):
 
@@ -593,6 +612,7 @@ def main():
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = MindReaderApp()  # Создаём объект класса MindReaderApp
     window.showMaximized()  # Показываем окно
+    window.setFixedSize(app.desktop().screenGeometry().width(), app.desktop().screenGeometry().height())
     app.exec_()  # и запускаем приложение
 
 if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
