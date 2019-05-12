@@ -73,7 +73,6 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.frame = None
         self.capture = None
         self.fps = int(30)
-        self.frameRatio = 1
         self.videoSaver = None
         if not os.path.exists('Recordings'):
             os.makedirs('Recordings')    
@@ -396,47 +395,86 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def openFile(self):
             self.vidFileName, _ = QFileDialog.getOpenFileName(self, "Открыть видео",
-                    QDir.homePath())
+                    QDir.homePath(), "video files (*.avi *.mp4 *.gif)")
 
             if self.vidFileName != '':
                 self.videoChosed = True
 
+    def butter_bandpass(self, lowcut, highcut, fs, order=5):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return b, a
+ 
+    def butter_bandpass_filter(self, data, lowcut, highcut, fs=256, order=5):
+        b, a = self.butter_bandpass(lowcut, highcut, fs, order=order)
+        y = lfilter(b, a, data)
+        return y
+ 
+    def filter(self, data, hi, lo):
+        fs = np.fft.rfft(data)
+        q = np.fft.rfftfreq(len(data), 256)
+ 
+        fs[(q>hi)] = 0
+        fs[(q<lo)] = 0
+        return np.fft.irfft(fs)
+ 
     def readFromEEG(self):
-        gotBegin = False
-
-        # seek start
-        while not gotBegin:
-
-            # 1
-            x = self.ser.read()
-            while int.from_bytes(x, byteorder='big') != 165:
+        n = 26
+        strArr = np.zeros(n)
+        pArr = np.zeros(n)
+ 
+        for i in range(0, n):
+            gotBegin = False
+ 
+            # seek start
+            while not gotBegin:
+ 
+                # 1
                 x = self.ser.read()
-            gotBegin = True
-
-            # 2
-            x = self.ser.read()
-            gotBegin = gotBegin and int.from_bytes(x, byteorder='big') == 90
-
-            # 3
-            x = self.ser.read()
-            gotBegin = gotBegin and int.from_bytes(x, byteorder='big') == 2
-
-        # 4
-        self.ser.read()
-
-        def conv2sig(xb, yb):
-            xi = int.from_bytes(xb, byteorder='big')
-            yi = int.from_bytes(yb, byteorder='big')
-            a = format(xi, 'b') + format(yi, 'b')
-            return int(a, 2)
-
-        # 5 and 6
-        ch1 = conv2sig(self.ser.read(), self.ser.read())
-
-        # 7 and 8
-        ch2 = conv2sig(self.ser.read(), self.ser.read())
-
-        return ch1, ch2
+                while int.from_bytes(x, byteorder='big') != 165:
+                    x = self.ser.read()
+                gotBegin = True
+ 
+                # 2
+                x = self.ser.read()
+                gotBegin = gotBegin and int.from_bytes(x, byteorder='big') == 90
+ 
+                # 3
+                x = self.ser.read()
+                gotBegin = gotBegin and int.from_bytes(x, byteorder='big') == 2
+ 
+            # 4
+            self.ser.read()
+ 
+            def conv2sig(xb, yb):
+                xi = int.from_bytes(xb, byteorder='big')
+                yi = int.from_bytes(yb, byteorder='big')
+                a = format(xi, 'b') + format(yi, 'b')
+                return int(a, 2)
+ 
+            # 5 and 6
+            ch1 = conv2sig(self.ser.read(), self.ser.read())
+            strArr[i] = ch1
+            # 7 and 8
+            ch2 = conv2sig(self.ser.read(), self.ser.read())
+            pArr[i] = ch2
+ 
+        out1 = self.butter_bandpass_filter(strArr, 8, 12)
+        out2 = self.butter_bandpass_filter(pArr, 12, 30)
+        # out1 = self.filter(strArr, 8, 12)
+        # out2 = self.butter_bandpass_filter(strArr, 8, 12)
+ 
+        a1 = np.mean(out1)
+        a2 = abs(out1.min()) + abs(out1.max())
+        a3 = out1[len(out1) - 1]
+ 
+        b1 = np.mean(out2)
+        b2 = out2.min()
+        b3 = out2[len(out2) - 1]
+ 
+        return a2, b2
 
     def inputCom(self):
 
@@ -470,7 +508,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 allLines.remove(allLines[0])
                 allLines.remove(allLines[0])
 
-                # reset data for graphs
+                # reset data for graphse
                 self.data1 = []
                 self.data2 = []
                 self.timings = []
