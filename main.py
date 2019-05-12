@@ -317,7 +317,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             # добавляем точки только если их надо считывать
             if not self.fromFile:
-                self.time = self.time.addMSecs(interval)
+                self.time = self.time.addMSecs(interval*1000)
                 self.timings.append(self.time.toString('mm:ss.zzz'))
                 self.emotions.append(emtn)
                 self.data1.append(ch1)
