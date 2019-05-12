@@ -6,6 +6,7 @@ import cv2
 import serial
 import glob
 import time
+from scipy.signal import butter, lfilter
 from numpy.fft import rfft
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5 import QtWidgets
@@ -117,26 +118,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.emotionsList = []
 
         
-        # проверяем com-порты
-        if sys.platform.startswith('win'):
-            ports = ['COM%s' % (i + 1) for i in range(256)]
-        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-            # this excludes your current terminal "/dev/tty"
-            ports = glob.glob('/dev/tty[A-Za-z]*')
-        elif sys.platform.startswith('darwin'):
-            ports = glob.glob('/dev/tty.*')
-        else:
-            raise EnvironmentError('Unsupported platform')
-
-        result = []
-        for port in ports:
-            try:
-                s = serial.Serial(port)
-                s.close()
-                result.append(port)
-            except (OSError, serial.SerialException):
-                pass
-        print(result)
+       
 
     def cancel(self):
         self.fromFile = False
@@ -167,12 +149,15 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         else:
             if self.fromFile:
-                self.faceWidget.hide()
-                self.facePlayer.setMedia(
-                    QMediaContent(QUrl.fromLocalFile(self.faceFileName)))
-                self.qw.show()
-                self.facePlayer.play()
-                self.start = time.time()
+                try:
+                    self.faceWidget.hide()
+                    self.facePlayer.setMedia(
+                        QMediaContent(QUrl.fromLocalFile(self.faceFileName)))
+                    self.qw.show()
+                    self.facePlayer.play()
+                    self.start = time.time()
+                except Exception as e:
+                    QMessageBox.about(self, "Ошибка!", "Видеофайл отсутствует или поврежден.")
             if not self.fromFile:
                 if self.port == "":
                     QMessageBox.about(self, "Ошибка!", "Выберите COM порт!")
@@ -324,6 +309,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         # точки выводятся каждые 100 мс
         interval = 100 / 4
+        if not self.fromFile:
+            interval = 0.1 / 4
         if self.counter >= interval:
             interval *= 4
             self.counter = 0
@@ -481,7 +468,14 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         text, ok = QInputDialog.getText(self, 'Выбор COM порта', 'Введите номер COM порта, к которому подключено устройство:')
 
         if ok:
-            self.port = '/dev/ttyUSB' + text
+            if sys.platform.startswith('win'):
+                self.port = 'COM' + text
+            elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+                self.port = '/dev/ttyUSB' + text
+            elif sys.platform.startswith('darwin'):
+                self.port = '/dev/ttyUSB' + text
+            else:
+                raise EnvironmentError('Unsupported platform')
             self.ser.port = self.port
             if not self.ser.isOpen():
                 try:
