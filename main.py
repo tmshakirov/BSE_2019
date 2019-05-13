@@ -458,7 +458,7 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         a3 = out1[len(out1) - 1]
  
         b1 = np.mean(out2)
-        b2 = out2.min()
+        b2 = abs(out2.min()) + abs(out2.max())
         b3 = out2[len(out2) - 1]
  
         return a2, b2
@@ -513,8 +513,8 @@ class MindReaderApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 for line in allLines:
                     x = line.split('|')
 
-                    self.data1.append(int(x[0]))
-                    self.data2.append(int(x[1]))
+                    self.data1.append(float(x[0]))
+                    self.data2.append(float(x[1]))
                     self.timings.append(x[2])
                     self.emotions.append(x[3])
 
